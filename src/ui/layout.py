@@ -5,8 +5,10 @@ import streamlit as st
 from src.mock.telemetry_generator import EvaluationSession
 from src.ui.components.badge import render_evaluation_badge
 from src.ui.components.kpi_cards import render_kpi_cards
-from src.ui.components.charts import render_probability_chart, render_shap_waterfall
+from src.ui.components.charts import render_probability_chart
 from src.ui.components.transcript_viewer import render_media_and_transcript_viewer
+from src.ui.components.pedagogical_dimensions import render_pedagogical_dimensions
+from src.models.evaluator import run_evaluation, apply_evaluation_to_session
 
 
 def render_header():
@@ -19,13 +21,18 @@ def render_header():
         </span>
     </div>
     <div class="sub-title">
-        Air-gapped pedagogical analytics &bull; Content-only visual telemetry &bull; In-memory audio eviction &bull; Explainable SHAP attributions
+        Air-gapped pedagogical analytics &bull; Content-only visual telemetry &bull; In-memory audio eviction &bull; LLM Judgement & Explanations
     </div>
     """)
 
 
 def render_dashboard_layout(session: EvaluationSession):
     """Render the dual-pane interface: Left for media/evidence, Right for grading dashboard."""
+    # Ensure pedagogical evaluation is computed for the active session
+    if getattr(session, "pedagogical_evaluation", None) is None:
+        eval_res = run_evaluation(session.telemetry, session.transcript_snippets, session.duration_str)
+        apply_evaluation_to_session(session, eval_res)
+
     render_header()
     
     col_left, col_right = st.columns([1, 1.3], gap="large")
@@ -36,13 +43,15 @@ def render_dashboard_layout(session: EvaluationSession):
     with col_right:
         st.html('<div class="pane-header">📊 Pedagogical Assessment & Coaching Dashboard</div>')
         
-        # 1. Executive Grade Badge & Coaching Tips
+        # 1. Executive Grade Badge & Diagnostic Synthesis
         render_evaluation_badge(session)
         
-        # 2. Telemetry KPI Grid
+        # 2. Objective Telemetry KPI Grid
         render_kpi_cards(session.telemetry)
         
-        # 3. Model Probabilities & Explainability Section
-        st.markdown("#### 🔬 Decision Confidence & Feature Attributions")
+        # 3. Pedagogical Dimension Sub-Scores & Coaching
+        render_pedagogical_dimensions(session.pedagogical_evaluation)
+        
+        # 4. Model Decision Confidence Distribution
+        st.markdown("#### 🔬 Decision Confidence Distribution")
         render_probability_chart(session.probabilities, session.tier.value)
-        render_shap_waterfall(session.shap_drivers)

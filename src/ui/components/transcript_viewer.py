@@ -128,6 +128,17 @@ def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source
                     )
                     for s in audio_telemetry.segments
                 ]
+
+        # Step 4: Run LLM Pedagogical Judgement & Explanations (Epic 5)
+        with st.spinner("Generating LLM pedagogical judgement & diagnostic sub-scores..."):
+            from src.models.evaluator import run_evaluation, apply_evaluation_to_session
+            eval_res = run_evaluation(
+                session_data.telemetry,
+                session_data.transcript_snippets,
+                session_data.duration_str,
+            )
+            apply_evaluation_to_session(session_data, eval_res)
+
     return True
 
 

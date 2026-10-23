@@ -58,6 +58,7 @@ class EvaluationSession:
     shap_drivers: List[ShapDriver]
     transcript_snippets: List[TranscriptSnippet]
     retained_slides: List[RetainedSlide]
+    pedagogical_evaluation: Any = None
 
 
 SCENARIOS: Dict[str, EvaluationSession] = {
