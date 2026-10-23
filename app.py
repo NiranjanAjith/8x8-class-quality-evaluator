@@ -21,6 +21,12 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 def init_session_state():
     """Initialize persistent session state for evaluation data and ingested media."""
+    # Force eviction of any legacy mock session state retained in browser memory
+    if "session_data" in st.session_state and st.session_state.session_data is not None:
+        if getattr(st.session_state.session_data, "scenario_id", "") in ["interactive", "lecture", "disengaged", "chaotic"]:
+            st.session_state.session_data = None
+            st.session_state.ingested_media = None
+
     if "session_data" not in st.session_state:
         st.session_state.session_data = None
     if "ingested_media" not in st.session_state:

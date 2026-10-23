@@ -17,8 +17,8 @@ def render_header():
     render_html("""
     <div class="main-title">
         <span>🎓 8x8 Class Quality Evaluator</span>
-        <span style="font-size: 0.8rem; background: #e0e7ff; color: #4338ca; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 700;">
-            Production Edition &bull; Privacy-First
+        <span style="font-size: 0.8rem; background: #dcfce7; color: #15803d; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 700;">
+            v2.2 Live &bull; Zero-Mock Engine
         </span>
     </div>
     <div class="sub-title">
