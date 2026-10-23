@@ -92,12 +92,11 @@ def test_audio_pipeline_execution():
 def test_ui_audio_pipeline_integration():
     """Verify that transcript_viewer's pipeline runner processes media and sets session state."""
     import streamlit as st
-    from src.mock.telemetry_generator import get_scenario
     from src.ui.components.transcript_viewer import _process_and_store_ingested_media
     from src.ingestion.models import IngestedMedia
 
-    # Initialize synthetic session data
-    st.session_state.session_data = get_scenario("interactive")
+    # Initialize empty session state
+    st.session_state.session_data = None
     tone_wav = create_synthetic_wav(duration_sec=2.0, sample_rate=16000, channels=1)
 
     success = _process_and_store_ingested_media(tone_wav, "lecture_sample.wav", "file", 0.06)
@@ -107,6 +106,7 @@ def test_ui_audio_pipeline_integration():
     assert ingested.is_audio_evicted is True
     assert ingested.is_video_evicted is True
     assert ingested.wav_bytes is None  # Audio buffer purged
+    assert st.session_state.session_data is not None
     assert st.session_state.session_data.telemetry["wpm"] >= 0
 
 

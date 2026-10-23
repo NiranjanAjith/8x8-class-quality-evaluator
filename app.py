@@ -5,7 +5,6 @@ Target Platform: Streamlit Community Cloud / Modern Container
 import streamlit as st
 from src.ui.styles import CUSTOM_CSS
 from src.ui.layout import render_dashboard_layout
-from src.mock.telemetry_generator import get_scenario
 
 
 # Set Streamlit page configuration for pure dual-pane presentation

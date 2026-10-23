@@ -3,9 +3,8 @@ Top-Level Evaluator Interface.
 Coordinates LLM judgement and applies results to EvaluationSession.
 """
 from typing import Dict, List, Any
-from src.models.schema import PedagogicalEvaluation
+from src.models.schema import PedagogicalEvaluation, EvaluationSession, QualityTier
 from src.models.llm_judge import evaluate_with_llm
-from src.mock.telemetry_generator import EvaluationSession, QualityTier
 
 
 def run_evaluation(

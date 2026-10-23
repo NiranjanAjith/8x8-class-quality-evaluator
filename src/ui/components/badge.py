@@ -3,7 +3,7 @@ Executive Evaluation Badge & Coaching Summary Component.
 """
 import streamlit as st
 from src.ui.styles import render_html
-from src.mock.telemetry_generator import EvaluationSession, QualityTier
+from src.models.schema import EvaluationSession, QualityTier
 
 
 def render_evaluation_badge(session: EvaluationSession):

@@ -54,14 +54,14 @@ def estimate_talk_ratio(
     Returns (teacher_talk_pct, student_talk_pct).
     """
     if not segments:
-        return 75.0, 25.0
+        return 100.0, 0.0
 
     teacher_words = sum(s.words_count for s in segments if "[Teacher]" in s.speaker)
     student_words = sum(s.words_count for s in segments if "[Student]" in s.speaker)
     total_words = teacher_words + student_words
 
     if total_words == 0:
-        return 75.0, 25.0
+        return 100.0, 0.0
 
     teacher_pct = round((teacher_words / float(total_words)) * 100.0, 1)
     student_pct = round(100.0 - teacher_pct, 1)

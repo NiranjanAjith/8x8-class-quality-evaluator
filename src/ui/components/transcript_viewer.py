@@ -7,7 +7,13 @@ Option A PII sanitization, and session-state persistence.
 import time
 import streamlit as st
 from src.ui.styles import render_html
-from src.mock.telemetry_generator import EvaluationSession, RetainedSlide, TranscriptSnippet
+from src.models.schema import (
+    EvaluationSession,
+    RetainedSlide,
+    TranscriptSnippet,
+    QualityTier,
+    create_empty_evaluation_session,
+)
 from src.ingestion.media_loader import load_media_from_file, load_media_from_url
 from src.ingestion.audio_extractor import extract_audio_pcm_16k
 from src.ingestion.models import IngestedMedia
@@ -91,17 +97,16 @@ def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source
     )
     st.session_state.ingested_media = ingested
 
-    if st.session_state.get("session_data") is None:
-        from src.mock.telemetry_generator import get_scenario
-        st.session_state.session_data = get_scenario("interactive")
-
-    session_data = st.session_state.session_data
-    session_data.duration_str = audio_res.duration_str
+    # Step 1: Initialize clean evaluation session with zero mock residue
+    session_data = create_empty_evaluation_session(
+        source_name=source_name,
+        duration_str=audio_res.duration_str,
+    )
     
-    # Update Visual telemetry
+    # Step 2: Populate Visual Telemetry & Non-Face Slides
+    session_data.telemetry["slide_count"] = visual_res.slide_count
+    session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
     if visual_res.slide_count > 0:
-        session_data.telemetry["slide_count"] = visual_res.slide_count
-        session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
         session_data.retained_slides = [
             RetainedSlide(
                 slide_id=s.slide_id,
@@ -114,42 +119,41 @@ def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source
             for s in visual_res.slides
         ]
     else:
-        session_data.telemetry["slide_count"] = 0
-        session_data.telemetry["slide_velocity_min"] = 0.0
         session_data.retained_slides = []
 
-        # Update Audio telemetry
-        if audio_telemetry.success:
-            session_data.telemetry["dead_air_pct"] = audio_telemetry.dead_air_pct
-            session_data.telemetry["wpm"] = audio_telemetry.wpm
-            session_data.telemetry["question_density"] = audio_telemetry.question_density
-            session_data.telemetry["total_questions"] = audio_telemetry.total_questions
-            session_data.telemetry["teacher_talk_pct"] = audio_telemetry.teacher_talk_pct
-            session_data.telemetry["student_talk_pct"] = audio_telemetry.student_talk_pct
+    # Step 3: Populate Audio Telemetry & Whisper Transcripts (Runs for ALL media)
+    if audio_telemetry.success:
+        session_data.telemetry["dead_air_pct"] = audio_telemetry.dead_air_pct
+        session_data.telemetry["wpm"] = audio_telemetry.wpm
+        session_data.telemetry["question_density"] = audio_telemetry.question_density
+        session_data.telemetry["total_questions"] = audio_telemetry.total_questions
+        session_data.telemetry["teacher_talk_pct"] = audio_telemetry.teacher_talk_pct
+        session_data.telemetry["student_talk_pct"] = audio_telemetry.student_talk_pct
 
-            if audio_telemetry.segments:
-                session_data.transcript_snippets = [
-                    TranscriptSnippet(
-                        timestamp=s.timestamp_str,
-                        speaker=s.speaker,
-                        text=s.text,
-                        keyframe_id=f"frame_{s.segment_id:02d}",
-                        pedagogical_tag=s.pedagogical_tag,
-                        explanation=s.explanation,
-                    )
-                    for s in audio_telemetry.segments
-                ]
+        if audio_telemetry.segments:
+            session_data.transcript_snippets = [
+                TranscriptSnippet(
+                    timestamp=s.timestamp_str,
+                    speaker=s.speaker,
+                    text=s.text,
+                    keyframe_id=f"frame_{s.segment_id:02d}",
+                    pedagogical_tag=s.pedagogical_tag,
+                    explanation=s.explanation,
+                )
+                for s in audio_telemetry.segments
+            ]
 
-        # Step 4: Run LLM Pedagogical Judgement & Explanations (Epic 5)
-        with st.spinner("Generating LLM pedagogical judgement & diagnostic sub-scores..."):
-            from src.models.evaluator import run_evaluation, apply_evaluation_to_session
-            eval_res = run_evaluation(
-                session_data.telemetry,
-                session_data.transcript_snippets,
-                session_data.duration_str,
-            )
-            apply_evaluation_to_session(session_data, eval_res)
+    # Step 4: Run Real LLM Pedagogical Judgement & Explanations (Epic 5)
+    with st.spinner("Generating LLM pedagogical judgement & diagnostic sub-scores..."):
+        from src.models.evaluator import run_evaluation, apply_evaluation_to_session
+        eval_res = run_evaluation(
+            session_data.telemetry,
+            session_data.transcript_snippets,
+            session_data.duration_str,
+        )
+        apply_evaluation_to_session(session_data, eval_res)
 
+    st.session_state.session_data = session_data
     return True
 
 

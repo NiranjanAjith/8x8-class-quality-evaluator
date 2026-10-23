@@ -1,10 +1,9 @@
 """
-Plotly Visualizations for Probabilities & SHAP Attribution.
+Plotly Visualizations for Pedagogical Confidence Probabilities.
 """
-from typing import Dict, List
+from typing import Dict
 import plotly.graph_objects as go
 import streamlit as st
-from src.mock.telemetry_generator import ShapDriver
 
 
 def render_probability_chart(probabilities: Dict[str, float], predicted_tier: str):
@@ -63,69 +62,6 @@ def render_probability_chart(probabilities: Dict[str, float], predicted_tier: st
             title="",
             autorange="reversed",
             tickfont=dict(size=12, color="#1e293b"),
-        ),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-    )
-    
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
-
-def render_shap_waterfall(shap_drivers: List[ShapDriver]):
-    """Render directional SHAP feature impact bar chart."""
-    features = [d.feature for d in shap_drivers]
-    impacts = [d.impact * 100 for d in shap_drivers]  # percentage points
-    descriptions = [d.description for d in shap_drivers]
-    
-    colors = [
-        "#10b981" if d.direction == "positive" else "#ef4444"
-        for d in shap_drivers
-    ]
-    
-    # Reverse order for natural top-to-bottom reading
-    features = features[::-1]
-    impacts = impacts[::-1]
-    descriptions = descriptions[::-1]
-    colors = colors[::-1]
-    
-    fig = go.Figure(
-        go.Bar(
-            x=impacts,
-            y=features,
-            orientation="h",
-            marker=dict(color=colors, cornerradius=4),
-            customdata=descriptions,
-            text=[f"{'+' if imp > 0 else ''}{imp:.1f}%" for imp in impacts],
-            textposition="outside",
-            cliponaxis=False,
-            hovertemplate="<b>%{y}</b><br>Score Impact: %{text}<br><i>%{customdata}</i><extra></extra>",
-        )
-    )
-    
-    # Calculate sensible x-axis bounds
-    max_abs = max(abs(min(impacts)), abs(max(impacts))) + 8
-    
-    fig.update_layout(
-        title=dict(
-            text="<b>SHAP Pedagogical Attribution Drivers</b> (Impact on Class Grade)",
-            font=dict(size=14, color="#0f172a"),
-            x=0.0,
-        ),
-        margin=dict(l=10, r=45, t=35, b=25),
-        height=260,
-        xaxis=dict(
-            title="Marginal Contribution (% Shift)",
-            range=[-max_abs, max_abs],
-            showgrid=True,
-            gridcolor="#f1f5f9",
-            zeroline=True,
-            zerolinecolor="#94a3b8",
-            zerolinewidth=1.5,
-            ticksuffix="%",
-        ),
-        yaxis=dict(
-            title="",
-            tickfont=dict(size=11, color="#1e293b"),
         ),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",

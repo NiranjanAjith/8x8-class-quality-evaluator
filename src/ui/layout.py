@@ -2,7 +2,7 @@
 Main Layout & Dual-Pane Orchestrator.
 """
 import streamlit as st
-from src.mock.telemetry_generator import EvaluationSession
+from src.models.schema import EvaluationSession
 from src.ui.styles import render_html
 from src.ui.components.badge import render_evaluation_badge
 from src.ui.components.kpi_cards import render_kpi_cards

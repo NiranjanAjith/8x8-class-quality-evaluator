@@ -1,11 +1,10 @@
 """
 Unit & Integration Tests for Epic 5: LLM Pedagogical Judgement & Explanations.
 """
-from src.models.schema import DimensionScore, PedagogicalEvaluation
+from src.models.schema import DimensionScore, PedagogicalEvaluation, QualityTier, TranscriptSnippet, EvaluationSession, create_empty_evaluation_session
 from src.models.prompt_builder import build_pedagogical_prompt
 from src.models.llm_judge import evaluate_with_local_rubric, _parse_json_evaluation, evaluate_with_llm
 from src.models.evaluator import run_evaluation, apply_evaluation_to_session
-from src.mock.telemetry_generator import get_scenario, QualityTier, TranscriptSnippet
 
 
 def test_pedagogical_prompt_builder():
@@ -103,7 +102,27 @@ def test_parse_json_evaluation():
 
 def test_apply_evaluation_to_session():
     """Verify session is mutated properly by apply_evaluation_to_session."""
-    session = get_scenario("interactive")
+    session = create_empty_evaluation_session("interactive_test.mp4", "45:00")
+    session.telemetry = {
+        "dead_air_pct": 8.0,
+        "wpm": 138,
+        "question_density": 18.0,
+        "total_questions": 12,
+        "teacher_talk_pct": 60.0,
+        "student_talk_pct": 40.0,
+        "slide_count": 8,
+        "slide_velocity_min": 0.5,
+    }
+    session.transcript_snippets = [
+        TranscriptSnippet(
+            timestamp="02:10",
+            speaker="[Teacher]",
+            text="What is our next step?",
+            keyframe_id="frame_01",
+            pedagogical_tag="Interrogative Prompt",
+            explanation="Check for understanding",
+        )
+    ]
     eval_res = evaluate_with_local_rubric(session.telemetry, session.transcript_snippets, session.duration_str)
     session = apply_evaluation_to_session(session, eval_res)
 

@@ -13,7 +13,7 @@ from src.audio.pipeline import run_audio_telemetry_pipeline
 from src.audio.metrics import compute_speech_pacing, extract_questions, estimate_talk_ratio
 from src.audio.vad import compute_vad_timeline
 from src.models.evaluator import run_evaluation, apply_evaluation_to_session
-from src.mock.telemetry_generator import get_scenario
+from src.models.schema import create_empty_evaluation_session, TranscriptSnippet
 from tests.test_ingestion import create_synthetic_wav
 
 
@@ -116,7 +116,17 @@ def test_all_faces_dropped_resilience():
     assert len(slides) == 0
     assert velocity == 0.0
 
-    session = get_scenario("interactive")
+    session = create_empty_evaluation_session("all_faces.mp4", "10:00")
+    session.transcript_snippets = [
+        TranscriptSnippet(
+            timestamp="01:00",
+            speaker="[Teacher]",
+            text="Let us review chapter one.",
+            keyframe_id="frame_01",
+            pedagogical_tag="Instructional Pacing",
+            explanation="Lecture statement",
+        )
+    ]
     session.retained_slides = []
     session.telemetry["slide_count"] = 0
     session.telemetry["slide_velocity_min"] = 0.0

@@ -67,6 +67,7 @@ def transcribe_audio_stream(
         transcribed_segments: List[TranscribedSegment] = []
         seg_idx = 1
         prev_was_question = False
+        prev_end_sec = 0.0
 
         for seg in segments_gen:
             clean_text = sanitize_transcript_text(seg.text.strip())
@@ -85,7 +86,10 @@ def transcribe_audio_stream(
                 clean_text.lower().startswith(w) for w in ["who", "what", "where", "when", "why", "how", "can you", "could"]
             )
 
-            if prev_was_question:
+            silence_pause = seg.start - prev_end_sec if prev_end_sec > 0.0 else 0.0
+
+            # Only assign student turn if a prior question was followed by a conversational wait pause (>= 1.5s)
+            if prev_was_question and silence_pause >= 1.5:
                 speaker = "[Student]"
                 pedagogical_tag = "Active Participation"
                 explanation = "Student response volunteered following an instructional check-for-understanding."
@@ -105,6 +109,8 @@ def transcribe_audio_stream(
                 pedagogical_tag = "Instructional Pacing"
                 explanation = "Classroom guidance and conceptual continuity statement."
                 prev_was_question = False
+
+            prev_end_sec = seg.end
 
             transcribed_segments.append(
                 TranscribedSegment(

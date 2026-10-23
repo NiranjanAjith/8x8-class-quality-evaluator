@@ -6,7 +6,7 @@ import sys
 import unittest
 
 def run_all_tests():
-    import tests.test_mock_and_ui as t1
+    import tests.test_session_and_ui as t1
     import tests.test_ingestion as t2
     import tests.test_vision as t3
     import tests.test_audio as t4
@@ -14,10 +14,11 @@ def run_all_tests():
     import tests.test_resilience_and_deployment as t6
 
     suites = [
-        ("Epic 1: UI & Telemetry Generator", [
-            t1.test_scenarios_structure,
+        ("Epic 1: Production Domain Models & UI Orchestration", [
+            t1.test_empty_session_structure,
             t1.test_chart_generation,
             t1.test_empty_state_initial_rendering,
+            t1.test_monologue_rubric_downgrade,
         ]),
         ("Epic 2: Media Ingestion & Ephemeral Lifecycle", [
             t2.test_ffmpeg_binary_availability,
