@@ -1,15 +1,20 @@
 """
 Synchronized Transcript & Retained Keyframe Inspector (Left Pane).
-Supports Recording/Media URL input, local file upload, and evidence analysis.
+Supports Recording/Media URL input, local file upload, FFmpeg extraction, and evidence analysis.
 """
 import streamlit as st
 from src.mock.telemetry_generator import EvaluationSession
+from src.ingestion.media_loader import load_media_from_file, load_media_from_url
+from src.ingestion.audio_extractor import extract_audio_pcm_16k
+from src.ingestion.lifecycle import EphemeralAudioBuffer
 
 
 def render_media_and_transcript_viewer(session: EvaluationSession):
     """Render media link/file ingestion, retained slide gallery, and evidence quotes with explanations."""
     
     st.html('<div class="pane-header">📁 Media Input & Evidence Explorer</div>')
+    
+    media_processed = False
     
     # 1. Dual Ingestion: Recording/Stream URL & Local File Upload
     input_tab_url, input_tab_upload = st.tabs(["🔗 Recording / Stream URL", "📁 Local Media File"])
@@ -27,7 +32,24 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
             fetch_clicked = st.button("⚡ Ingest Stream", use_container_width=True)
             
         if fetch_clicked and media_url:
-            st.success(f"🔗 Linked stream: `{media_url[:45]}...` — Audio extracted in-memory; 0 media saved to disk.")
+            with st.spinner("Connecting to media stream in-memory..."):
+                load_res = load_media_from_url(media_url)
+            if not load_res.success:
+                st.error(load_res.error_message)
+            else:
+                with st.spinner("Normalizing audio to 16 kHz Mono PCM via FFmpeg..."):
+                    audio_res = extract_audio_pcm_16k(load_res.data)
+                if not audio_res.success:
+                    st.error(audio_res.error_message)
+                else:
+                    with EphemeralAudioBuffer(audio_res.wav_bytes, description="Stream Audio") as buf:
+                        st.success(
+                            f"✅ Ingested `{load_res.source_name}` ({load_res.size_mb:.1f} MB) — "
+                            f"Normalized 16 kHz Mono ({audio_res.duration_str})"
+                        )
+                        st.audio(buf.get_data(), format="audio/wav")
+                    st.caption("🛡️ In-memory audio buffer evicted immediately from RAM (0 bytes stored).")
+                    media_processed = True
         elif fetch_clicked and not media_url:
             st.warning("Please provide a valid recording or stream URL.")
         else:
@@ -40,12 +62,29 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
             help="Audio is processed strictly in-memory and discarded. Frames with detected faces are immediately purged."
         )
         if uploaded_file:
-            st.success(f"Loaded: `{uploaded_file.name}` ({uploaded_file.size / (1024*1024):.1f} MB) - Running in-memory evaluation...")
+            with st.spinner("Reading uploaded media into memory..."):
+                load_res = load_media_from_file(uploaded_file)
+            if not load_res.success:
+                st.error(load_res.error_message)
+            else:
+                with st.spinner("Normalizing audio to 16 kHz Mono PCM via FFmpeg..."):
+                    audio_res = extract_audio_pcm_16k(load_res.data)
+                if not audio_res.success:
+                    st.error(audio_res.error_message)
+                else:
+                    with EphemeralAudioBuffer(audio_res.wav_bytes, description="Uploaded Audio") as buf:
+                        st.success(
+                            f"✅ Ingested `{load_res.source_name}` ({load_res.size_mb:.1f} MB) — "
+                            f"Normalized 16 kHz Mono ({audio_res.duration_str})"
+                        )
+                        st.audio(buf.get_data(), format="audio/wav")
+                    st.caption("🛡️ In-memory audio buffer evicted immediately from RAM (0 bytes stored).")
+                    media_processed = True
         else:
             st.caption("Drop classroom recordings directly from your local machine (max 200MB).")
 
-    # Status notice
-    st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
+    if not media_processed:
+        st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
 
     # 2. Retained Instructional Slides Section
     st.markdown("#### 🖼️ Retained Instructional Slides (Non-Face)")
