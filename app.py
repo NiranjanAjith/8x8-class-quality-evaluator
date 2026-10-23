@@ -20,12 +20,19 @@ st.set_page_config(
 st.html(CUSTOM_CSS)
 
 
+def init_session_state():
+    """Initialize persistent session state for evaluation data and ingested media."""
+    if "session_data" not in st.session_state:
+        st.session_state.session_data = get_scenario("interactive")
+    if "ingested_media" not in st.session_state:
+        st.session_state.ingested_media = None
+
+
 def main():
-    # Load primary evaluation session data
-    session_data = get_scenario("interactive")
+    init_session_state()
     
-    # Render strictly two-panel layout (Left: Input & Evidence, Right: Assessment Dashboard)
-    render_dashboard_layout(session_data)
+    # Render strictly two-panel layout driven by session state
+    render_dashboard_layout(st.session_state.session_data)
 
 
 if __name__ == "__main__":
