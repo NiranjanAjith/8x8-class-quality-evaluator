@@ -1,0 +1,41 @@
+name: Sync to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    name: Sync Repository to Hugging Face Space
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          # Defaults to 'NiranjanAjith/8x8-class-quality-evaluator' or repository variable if configured
+          HF_SPACE_REPO: ${{ vars.HF_SPACE_REPO || 'NiranjanAjith/8x8-class-quality-evaluator' }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::Secret 'HF_TOKEN' is not configured in this GitHub repository!"
+            echo "To configure: Navigate to GitHub -> Repository Settings -> Secrets and variables -> Actions -> New repository secret"
+            echo "Name: HF_TOKEN | Value: <Your Hugging Face User Access Token with write permission>"
+            exit 1
+          fi
+
+          echo "Configuring git credentials for Hugging Face..."
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+          echo "Pushing main branch to Hugging Face Space: $HF_SPACE_REPO"
+          git remote add space "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_REPO" 2>/dev/null || \
+          git remote set-url space "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_REPO"
+
+          git push --force space main
+          echo "Successfully synced to Hugging Face Space!"
