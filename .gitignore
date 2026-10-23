@@ -27,7 +27,8 @@ venv/
 ENV/
 
 # Streamlit
-.streamlit/
+.streamlit/credentials.toml
+.streamlit/secrets.toml
 
 # OS
 .DS_Store

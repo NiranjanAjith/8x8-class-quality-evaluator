@@ -33,8 +33,12 @@ class IngestedMedia:
         """Purge raw video/container bytes once video frame extraction (Epic 3) is complete."""
         self.raw_media_bytes = None
         self.is_video_evicted = True
+        import gc
+        gc.collect()
 
     def evict_audio(self):
         """Purge normalized WAV bytes once speech transcription and VAD (Epic 4) are complete."""
         self.wav_bytes = None
         self.is_audio_evicted = True
+        import gc
+        gc.collect()

@@ -45,6 +45,8 @@ def render_active_ingested_card(ingested: IngestedMedia):
     with col_btn:
         if st.button("🔄 Ingest New Media", use_container_width=True):
             st.session_state.ingested_media = None
+            import gc
+            gc.collect()
             st.rerun()
 
 
@@ -206,7 +208,6 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
 
         # Demonstration notice when no custom media is currently active
         st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
-        st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
 
     # 2. Retained Instructional Slides Section
     st.markdown("#### 🖼️ Retained Instructional Slides (Non-Face)")
@@ -214,7 +215,7 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
     
     slides = session.retained_slides
     if not slides:
-        st.caption("No visual instructional slides detected in current media.")
+        st.info("ℹ️ No visual instructional slides detected (or all frames contained human faces and were purged for privacy). Evaluation proceeds using speech & dialogue telemetry.")
     else:
         slide_tabs = st.tabs([f"Slide {idx+1}" for idx in range(len(slides))])
         for idx, (tab, slide) in enumerate(zip(slide_tabs, slides)):
