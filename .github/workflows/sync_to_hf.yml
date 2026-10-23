@@ -19,8 +19,8 @@ jobs:
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          # Defaults to 'NiranjanAjith/8x8-class-quality-evaluator' or repository variable if configured
-          HF_SPACE_REPO: ${{ vars.HF_SPACE_REPO || 'NiranjanAjith/8x8-class-quality-evaluator' }}
+          # Target Hugging Face Space repository
+          HF_SPACE_REPO: ${{ vars.HF_SPACE_REPO || 'niranjan8/8x8-class-quality-evaluator' }}
         run: |
           if [ -z "$HF_TOKEN" ]; then
             echo "::error::Secret 'HF_TOKEN' is not configured in this GitHub repository!"
@@ -34,8 +34,8 @@ jobs:
           git config --global user.name "GitHub Actions"
 
           echo "Pushing main branch to Hugging Face Space: $HF_SPACE_REPO"
-          git remote add space "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_REPO" 2>/dev/null || \
-          git remote set-url space "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_REPO"
+          git remote add space "https://niranjan8:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_REPO" 2>/dev/null || \
+          git remote set-url space "https://niranjan8:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_REPO"
 
           git push --force space main
           echo "Successfully synced to Hugging Face Space!"
