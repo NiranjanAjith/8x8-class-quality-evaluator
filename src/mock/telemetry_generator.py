@@ -39,6 +39,7 @@ class RetainedSlide:
     title: str
     content_type: str  # "Presentation Deck", "Code Editor", "Digital Whiteboard"
     clutter_index: float  # 0.0 to 1.0
+    base64_jpeg: str = ""
 
 
 @dataclass

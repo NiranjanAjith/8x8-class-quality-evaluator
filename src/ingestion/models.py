@@ -18,11 +18,15 @@ class IngestedMedia:
     sample_rate: int
     channels: int
     is_audio_evicted: bool = False
+    is_video_evicted: bool = False
+    slide_count: int = 0
+    face_frames_dropped: int = 0
     ingested_at: float = 0.0
 
     def evict_raw_media(self):
         """Purge raw video/container bytes once video frame extraction (Epic 3) is complete."""
         self.raw_media_bytes = None
+        self.is_video_evicted = True
 
     def evict_audio(self):
         """Purge normalized WAV bytes once speech transcription and VAD (Epic 4) are complete."""
