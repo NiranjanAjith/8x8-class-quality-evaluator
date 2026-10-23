@@ -1,15 +1,17 @@
 """
 Synchronized Transcript & Retained Keyframe Inspector (Left Pane).
 Supports Recording/Media URL input, local file upload, FFmpeg extraction,
-face-filtered visual analysis (Epic 3), and session-state persistence.
+face-filtered visual analysis (Epic 3), speech transcription & VAD (Epic 4),
+Option A PII sanitization, and session-state persistence.
 """
 import time
 import streamlit as st
-from src.mock.telemetry_generator import EvaluationSession, RetainedSlide
+from src.mock.telemetry_generator import EvaluationSession, RetainedSlide, TranscriptSnippet
 from src.ingestion.media_loader import load_media_from_file, load_media_from_url
 from src.ingestion.audio_extractor import extract_audio_pcm_16k
 from src.ingestion.models import IngestedMedia
 from src.vision.pipeline import run_visual_telemetry_pipeline
+from src.audio.pipeline import run_audio_telemetry_pipeline
 
 
 def render_active_ingested_card(ingested: IngestedMedia):
@@ -25,16 +27,18 @@ def render_active_ingested_card(ingested: IngestedMedia):
             </span>
         </div>
         <div style="font-size: 0.78rem; color: #374151; line-height: 1.45;">
-            Size: <strong>{ingested.size_mb:.1f} MB</strong> &bull; Audio: <strong>{ingested.sample_rate} Hz Mono (16-bit PCM)</strong> &bull; Slides: <strong>{ingested.slide_count}</strong> &bull; Faces Evicted: <strong>{ingested.face_frames_dropped}</strong>
+            Size: <strong>{ingested.size_mb:.1f} MB</strong> &bull; Slides: <strong>{ingested.slide_count}</strong> &bull; Faces Evicted: <strong>{ingested.face_frames_dropped}</strong> &bull; Pacing: <strong>{ingested.wpm} WPM</strong> &bull; Dead Air: <strong>{ingested.dead_air_pct:.1f}%</strong> &bull; Questions: <strong>{ingested.question_density:.1f}/hr</strong> ({ingested.total_questions})
         </div>
-        <div style="font-size: 0.72rem; color: #15803d; margin-top: 0.35rem; font-weight: 600;">
-            🛡️ Raw Video Evicted from RAM &bull; Audio Buffered for Whisper & VAD (Epic 4)
+        <div style="font-size: 0.74rem; color: #15803d; margin-top: 0.4rem; font-weight: 600; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <span>🛡️ Video RAM: <strong>Purged</strong></span>
+            <span>🛡️ Audio RAM: <strong>{('Purged (Zero Retention)' if ingested.is_audio_evicted else 'Buffered')}</strong></span>
+            <span>🔒 PII Sanitizer: <strong>{ingested.pii_redaction_mode}</strong></span>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    if ingested.wav_bytes:
-        st.caption("🎧 Normalized Ephemeral Audio Preview:")
+    if ingested.wav_bytes and not ingested.is_audio_evicted:
+        st.caption("🎧 Ephemeral Audio Preview (Pre-Eviction):")
         st.audio(ingested.wav_bytes, format="audio/wav")
 
     col_btn, _ = st.columns([1.5, 3])
@@ -42,6 +46,89 @@ def render_active_ingested_card(ingested: IngestedMedia):
         if st.button("🔄 Ingest New Media", use_container_width=True):
             st.session_state.ingested_media = None
             st.rerun()
+
+
+def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source_type: str, size_mb: float) -> bool:
+    """Run full visual and audio extraction, transcribe, scrub PII, and evict raw buffers from RAM."""
+    with st.spinner("Extracting & normalizing audio (16 kHz Mono)..."):
+        audio_res = extract_audio_pcm_16k(raw_bytes)
+    if not audio_res.success:
+        st.error(audio_res.error_message)
+        return False
+
+    with st.spinner("Analyzing slides & dropping face frames (Epic 3)..."):
+        visual_res = run_visual_telemetry_pipeline(raw_bytes, sample_interval_sec=5.0)
+
+    with st.spinner("Transcribing speech, redacting PII, & calculating pacing/VAD (Epic 4)..."):
+        audio_telemetry = run_audio_telemetry_pipeline(audio_res.wav_bytes)
+
+    # Initialize ingested media model with audio evicted immediately
+    ingested = IngestedMedia(
+        source_name=source_name,
+        source_type=source_type,
+        size_mb=size_mb,
+        raw_media_bytes=None,  # Purged immediately to uphold zero biometric retention
+        wav_bytes=None,        # Purged immediately after transcription & VAD to enforce zero audio retention
+        duration_sec=audio_res.duration_sec,
+        duration_str=audio_res.duration_str,
+        sample_rate=audio_res.sample_rate,
+        channels=audio_res.channels,
+        is_audio_evicted=True,
+        is_video_evicted=True,
+        slide_count=visual_res.slide_count,
+        face_frames_dropped=visual_res.face_frames_dropped,
+        dead_air_pct=audio_telemetry.dead_air_pct if audio_telemetry.success else 0.0,
+        wpm=audio_telemetry.wpm if audio_telemetry.success else 0,
+        question_density=audio_telemetry.question_density if audio_telemetry.success else 0.0,
+        total_questions=audio_telemetry.total_questions if audio_telemetry.success else 0,
+        transcript_segments_count=len(audio_telemetry.segments) if audio_telemetry.success else 0,
+        pii_redaction_mode="Option A (Regex Sanitizer)",
+        ingested_at=time.time(),
+    )
+    st.session_state.ingested_media = ingested
+
+    if "session_data" in st.session_state:
+        session_data = st.session_state.session_data
+        session_data.duration_str = audio_res.duration_str
+        
+        # Update Visual telemetry
+        if visual_res.slide_count > 0:
+            session_data.telemetry["slide_count"] = visual_res.slide_count
+            session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
+            session_data.retained_slides = [
+                RetainedSlide(
+                    slide_id=s.slide_id,
+                    timestamp=s.timestamp,
+                    title=s.title,
+                    content_type=s.content_type,
+                    clutter_index=s.clutter_index,
+                    base64_jpeg=s.base64_jpeg,
+                )
+                for s in visual_res.slides
+            ]
+
+        # Update Audio telemetry
+        if audio_telemetry.success:
+            session_data.telemetry["dead_air_pct"] = audio_telemetry.dead_air_pct
+            session_data.telemetry["wpm"] = audio_telemetry.wpm
+            session_data.telemetry["question_density"] = audio_telemetry.question_density
+            session_data.telemetry["total_questions"] = audio_telemetry.total_questions
+            session_data.telemetry["teacher_talk_pct"] = audio_telemetry.teacher_talk_pct
+            session_data.telemetry["student_talk_pct"] = audio_telemetry.student_talk_pct
+
+            if audio_telemetry.segments:
+                session_data.transcript_snippets = [
+                    TranscriptSnippet(
+                        timestamp=s.timestamp_str,
+                        speaker=s.speaker,
+                        text=s.text,
+                        keyframe_id=f"frame_{s.segment_id:02d}",
+                        pedagogical_tag=s.pedagogical_tag,
+                        explanation=s.explanation,
+                    )
+                    for s in audio_telemetry.segments
+                ]
+    return True
 
 
 def render_media_and_transcript_viewer(session: EvaluationSession):
@@ -75,48 +162,10 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                 if not load_res.success:
                     st.error(load_res.error_message)
                 else:
-                    with st.spinner("Extracting & normalizing audio (16 kHz Mono)..."):
-                        audio_res = extract_audio_pcm_16k(load_res.data)
-                    with st.spinner("Analyzing slides & dropping face frames (Epic 3)..."):
-                        visual_res = run_visual_telemetry_pipeline(load_res.data, sample_interval_sec=5.0)
-
-                    if not audio_res.success:
-                        st.error(audio_res.error_message)
-                    else:
-                        ingested = IngestedMedia(
-                            source_name=load_res.source_name,
-                            source_type=load_res.source_type,
-                            size_mb=load_res.size_mb,
-                            raw_media_bytes=None,  # Purged immediately to uphold zero biometric & zero memory bloat
-                            wav_bytes=audio_res.wav_bytes,  # Retained for Epic 4 (Whisper/VAD)
-                            duration_sec=audio_res.duration_sec,
-                            duration_str=audio_res.duration_str,
-                            sample_rate=audio_res.sample_rate,
-                            channels=audio_res.channels,
-                            is_audio_evicted=False,
-                            is_video_evicted=True,
-                            slide_count=visual_res.slide_count,
-                            face_frames_dropped=visual_res.face_frames_dropped,
-                            ingested_at=time.time(),
-                        )
-                        st.session_state.ingested_media = ingested
-
-                        if "session_data" in st.session_state:
-                            st.session_state.session_data.duration_str = audio_res.duration_str
-                            if visual_res.slide_count > 0:
-                                st.session_state.session_data.telemetry["slide_count"] = visual_res.slide_count
-                                st.session_state.session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
-                                st.session_state.session_data.retained_slides = [
-                                    RetainedSlide(
-                                        slide_id=s.slide_id,
-                                        timestamp=s.timestamp,
-                                        title=s.title,
-                                        content_type=s.content_type,
-                                        clutter_index=s.clutter_index,
-                                        base64_jpeg=s.base64_jpeg,
-                                    )
-                                    for s in visual_res.slides
-                                ]
+                    success = _process_and_store_ingested_media(
+                        load_res.data, load_res.source_name, load_res.source_type, load_res.size_mb
+                    )
+                    if success:
                         st.rerun()
 
             elif fetch_clicked and not media_url:
@@ -136,53 +185,16 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                 if not load_res.success:
                     st.error(load_res.error_message)
                 else:
-                    with st.spinner("Extracting & normalizing audio (16 kHz Mono)..."):
-                        audio_res = extract_audio_pcm_16k(load_res.data)
-                    with st.spinner("Analyzing slides & dropping face frames (Epic 3)..."):
-                        visual_res = run_visual_telemetry_pipeline(load_res.data, sample_interval_sec=5.0)
-
-                    if not audio_res.success:
-                        st.error(audio_res.error_message)
-                    else:
-                        ingested = IngestedMedia(
-                            source_name=load_res.source_name,
-                            source_type=load_res.source_type,
-                            size_mb=load_res.size_mb,
-                            raw_media_bytes=None,  # Purged immediately to uphold zero biometric & zero memory bloat
-                            wav_bytes=audio_res.wav_bytes,  # Retained for Epic 4 (Whisper/VAD)
-                            duration_sec=audio_res.duration_sec,
-                            duration_str=audio_res.duration_str,
-                            sample_rate=audio_res.sample_rate,
-                            channels=audio_res.channels,
-                            is_audio_evicted=False,
-                            is_video_evicted=True,
-                            slide_count=visual_res.slide_count,
-                            face_frames_dropped=visual_res.face_frames_dropped,
-                            ingested_at=time.time(),
-                        )
-                        st.session_state.ingested_media = ingested
-
-                        if "session_data" in st.session_state:
-                            st.session_state.session_data.duration_str = audio_res.duration_str
-                            if visual_res.slide_count > 0:
-                                st.session_state.session_data.telemetry["slide_count"] = visual_res.slide_count
-                                st.session_state.session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
-                                st.session_state.session_data.retained_slides = [
-                                    RetainedSlide(
-                                        slide_id=s.slide_id,
-                                        timestamp=s.timestamp,
-                                        title=s.title,
-                                        content_type=s.content_type,
-                                        clutter_index=s.clutter_index,
-                                        base64_jpeg=s.base64_jpeg,
-                                    )
-                                    for s in visual_res.slides
-                                ]
+                    success = _process_and_store_ingested_media(
+                        load_res.data, load_res.source_name, load_res.source_type, load_res.size_mb
+                    )
+                    if success:
                         st.rerun()
             else:
                 st.caption("Drop classroom recordings directly from your local machine (max 200MB).")
 
         # Demonstration notice when no custom media is currently active
+        st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
         st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
 
     # 2. Retained Instructional Slides Section

@@ -21,6 +21,12 @@ class IngestedMedia:
     is_video_evicted: bool = False
     slide_count: int = 0
     face_frames_dropped: int = 0
+    dead_air_pct: float = 0.0
+    wpm: int = 0
+    question_density: float = 0.0
+    total_questions: int = 0
+    transcript_segments_count: int = 0
+    pii_redaction_mode: str = "Option A (Regex Sanitizer)"
     ingested_at: float = 0.0
 
     def evict_raw_media(self):
