@@ -190,6 +190,23 @@ def evaluate_with_local_rubric(
     )
 
 
+def _resolve_api_key(primary_key: str, fallback_key: Optional[str] = None) -> Optional[str]:
+    """Retrieve API key from os.environ or streamlit.secrets with alias support."""
+    for key in filter(None, [primary_key, fallback_key]):
+        val = os.environ.get(key)
+        if val and val.strip():
+            return val.strip()
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and key in st.secrets:
+                secret_val = st.secrets[key]
+                if secret_val:
+                    return str(secret_val).strip()
+        except Exception:
+            pass
+    return None
+
+
 def evaluate_with_llm(
     telemetry: Dict[str, Any],
     transcript_snippets: List[Any],
@@ -197,18 +214,47 @@ def evaluate_with_llm(
 ) -> PedagogicalEvaluation:
     """
     Attempt evaluation via LLM API if credentials exist; otherwise fallback smoothly to local rubric.
-    Supports Google Gemini, OpenAI, or Hugging Face Inference API.
+    Supports Groq (Free Tier Llama 3.3), Google Gemini, OpenAI, or Local Rubric Engine.
     """
-    api_key_gemini = os.environ.get("GEMINI_API_KEY")
-    api_key_openai = os.environ.get("OPENAI_API_KEY")
+    api_key_groq = _resolve_api_key("GROQ_API_KEY")
+    api_key_gemini = _resolve_api_key("GEMINI_API_KEY", "GOOGLE_API_KEY")
+    api_key_openai = _resolve_api_key("OPENAI_API_KEY")
 
-    if not api_key_gemini and not api_key_openai:
-        # No external API keys configured: return deterministic, zero-dependency local rubric
+    if not api_key_groq and not api_key_gemini and not api_key_openai:
+        # Zero external API keys configured: return deterministic, zero-dependency local rubric
         return evaluate_with_local_rubric(telemetry, transcript_snippets, duration_str)
 
     prompt = build_pedagogical_prompt(telemetry, transcript_snippets, duration_str)
 
-    # Try Gemini if API key is present
+    # 1. Try Groq (Free Tier Llama 3.3 70B via standard requests, zero extra pip packages)
+    if api_key_groq:
+        try:
+            import requests
+            headers = {
+                "Authorization": f"Bearer {api_key_groq}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.2,
+            }
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=25,
+            )
+            if resp.status_code == 200:
+                data = json.loads(resp.json()["choices"][0]["message"]["content"])
+                return _parse_json_evaluation(data, source="LLM (Groq Llama-3.3 70B)")
+            else:
+                logger.warning(f"Groq API returned HTTP {resp.status_code}: {resp.text}")
+        except Exception as e:
+            logger.warning(f"Groq API evaluation failed: {e}. Falling back to local rubric engine.")
+
+    # 2. Try Gemini if API key is present
     if api_key_gemini:
         try:
             import google.generativeai as genai
@@ -220,7 +266,7 @@ def evaluate_with_llm(
         except Exception as e:
             logger.warning(f"Gemini API evaluation failed: {e}. Falling back to local rubric engine.")
 
-    # Try OpenAI if API key is present
+    # 3. Try OpenAI if API key is present
     if api_key_openai:
         try:
             import openai

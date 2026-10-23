@@ -1,6 +1,6 @@
 """
 8x8 Class Quality Evaluator - Streamlit Application Entrypoint
-Target Platform: Hugging Face Spaces (Streamlit SDK)
+Target Platform: Streamlit Community Cloud / Modern Container
 """
 import streamlit as st
 from src.ui.styles import CUSTOM_CSS

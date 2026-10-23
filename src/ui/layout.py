@@ -17,7 +17,7 @@ def render_header():
     <div class="main-title">
         <span>🎓 8x8 Class Quality Evaluator</span>
         <span style="font-size: 0.8rem; background: #e0e7ff; color: #4338ca; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 700;">
-            Hugging Face Spaces &bull; CPU Edition
+            Production Edition &bull; Privacy-First
         </span>
     </div>
     <div class="sub-title">
@@ -43,6 +43,25 @@ def render_dashboard_layout(session: EvaluationSession):
     with col_right:
         st.html('<div class="pane-header">📊 Pedagogical Assessment & Coaching Dashboard</div>')
         
+        # LLM Evaluator Settings (Groq Free Tier / Offline)
+        with st.expander("⚙️ LLM Evaluator Settings (Groq / Free Tier)", expanded=False):
+            st.markdown(
+                "Supports **Groq Free Tier** (`llama-3.3-70b-versatile`) or the **Built-in Offline Rubric Engine** (100% Free)."
+            )
+            import os
+            groq_key_input = st.text_input(
+                "Groq API Key (Free at console.groq.com)",
+                value=st.session_state.get("user_groq_api_key", os.environ.get("GROQ_API_KEY", "")),
+                type="password",
+                help="Paste your free Groq API key (starts with gsk_). If left blank, the built-in offline engine is used with zero external calls.",
+            )
+            if groq_key_input:
+                os.environ["GROQ_API_KEY"] = groq_key_input
+                st.session_state["user_groq_api_key"] = groq_key_input
+                st.caption("🟢 Connected to Groq Free Tier (Llama 3.3 70B)")
+            else:
+                st.caption("ℹ️ No key provided. Operating on Built-in Offline Pedagogical Engine (100% Free).")
+
         # 1. Executive Grade Badge & Diagnostic Synthesis
         render_evaluation_badge(session)
         
