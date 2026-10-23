@@ -17,7 +17,7 @@ An air-gapped, privacy-first pedagogical assessment dashboard for classroom sess
 * **Dual-Pane Evaluation Dashboard:** Live media inspection on the left, executive quality grading on the right.
 * **Privacy via Frame & Audio Eviction:** Drops webcam frames containing detected faces; purges raw audio buffers immediately after local transcription.
 * **Multimodal Classroom Telemetry:** Tracks Talk-to-Listen ratio, speech pacing (WPM), question density, silence gaps (dead air %), and slide transition velocity.
-* **Explainable AI (SHAP):** Deconstructs quality scores into directional pedagogical drivers and actionable teacher coaching recommendations.
+* **Pedagogical LLM Judgement & Explanations:** Evaluates classroom quality with structured sub-scores (Clarity, Engagement, Pacing, Content Structure), key observed strengths, and actionable instructional coaching plans.
 
 ## 🛠️ Local Development
 ```bash
