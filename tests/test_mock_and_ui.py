@@ -45,7 +45,20 @@ def test_chart_generation():
         assert len(session.shap_drivers) > 0
 
 
+def test_empty_state_initial_rendering():
+    """Verify that when no input has been provided, dashboard renders empty state cleanly."""
+    import streamlit as st
+    from src.ui.layout import render_dashboard_layout, render_empty_dashboard_placeholder
+
+    st.session_state.ingested_media = None
+    st.session_state.session_data = None
+    # Verify placeholder renders without exception
+    render_empty_dashboard_placeholder()
+    render_dashboard_layout(None)
+
+
 if __name__ == "__main__":
     test_scenarios_structure()
     test_chart_generation()
+    test_empty_state_initial_rendering()
     print("All Epic 1 unit and component tests passed successfully!")

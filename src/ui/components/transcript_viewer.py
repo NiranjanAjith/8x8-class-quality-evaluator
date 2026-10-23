@@ -45,6 +45,7 @@ def render_active_ingested_card(ingested: IngestedMedia):
     with col_btn:
         if st.button("🔄 Ingest New Media", use_container_width=True):
             st.session_state.ingested_media = None
+            st.session_state.session_data = None
             import gc
             gc.collect()
             st.rerun()
@@ -89,25 +90,32 @@ def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source
     )
     st.session_state.ingested_media = ingested
 
-    if "session_data" in st.session_state:
-        session_data = st.session_state.session_data
-        session_data.duration_str = audio_res.duration_str
-        
-        # Update Visual telemetry
-        if visual_res.slide_count > 0:
-            session_data.telemetry["slide_count"] = visual_res.slide_count
-            session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
-            session_data.retained_slides = [
-                RetainedSlide(
-                    slide_id=s.slide_id,
-                    timestamp=s.timestamp,
-                    title=s.title,
-                    content_type=s.content_type,
-                    clutter_index=s.clutter_index,
-                    base64_jpeg=s.base64_jpeg,
-                )
-                for s in visual_res.slides
-            ]
+    if st.session_state.get("session_data") is None:
+        from src.mock.telemetry_generator import get_scenario
+        st.session_state.session_data = get_scenario("interactive")
+
+    session_data = st.session_state.session_data
+    session_data.duration_str = audio_res.duration_str
+    
+    # Update Visual telemetry
+    if visual_res.slide_count > 0:
+        session_data.telemetry["slide_count"] = visual_res.slide_count
+        session_data.telemetry["slide_velocity_min"] = visual_res.slide_velocity_min
+        session_data.retained_slides = [
+            RetainedSlide(
+                slide_id=s.slide_id,
+                timestamp=s.timestamp,
+                title=s.title,
+                content_type=s.content_type,
+                clutter_index=s.clutter_index,
+                base64_jpeg=s.base64_jpeg,
+            )
+            for s in visual_res.slides
+        ]
+    else:
+        session_data.telemetry["slide_count"] = 0
+        session_data.telemetry["slide_velocity_min"] = 0.0
+        session_data.retained_slides = []
 
         # Update Audio telemetry
         if audio_telemetry.success:
@@ -206,14 +214,18 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
             else:
                 st.caption("Drop classroom recordings directly from your local machine (max 200MB).")
 
-        # Demonstration notice when no custom media is currently active
-        st.info("💡 Demonstrating active session with pre-extracted telemetry data. Ingest media above to evaluate new sessions.")
+        # Hide downstream result elements before user media input is provided
+        return
+
+    # Check session presence before rendering results
+    if session is None:
+        return
 
     # 2. Retained Instructional Slides Section
     st.markdown("#### 🖼️ Retained Instructional Slides (Non-Face)")
     st.caption("Human faces are automatically evicted. Analysis is restricted strictly to instructional materials.")
     
-    slides = session.retained_slides
+    slides = getattr(session, "retained_slides", [])
     if not slides:
         st.info("ℹ️ No visual instructional slides detected (or all frames contained human faces and were purged for privacy). Evaluation proceeds using speech & dialogue telemetry.")
     else:
@@ -257,7 +269,7 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
     search_query = st.text_input("🔍 Search transcript tokens, tags, or pedagogical notes", placeholder="e.g., questions, determinant, silence...")
 
     filtered_snippets = [
-        s for s in session.transcript_snippets
+        s for s in getattr(session, "transcript_snippets", [])
         if not search_query 
         or search_query.lower() in s.text.lower() 
         or search_query.lower() in s.pedagogical_tag.lower() 

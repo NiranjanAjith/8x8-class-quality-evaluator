@@ -17,6 +17,7 @@ def run_all_tests():
         ("Epic 1: UI & Telemetry Generator", [
             t1.test_scenarios_structure,
             t1.test_chart_generation,
+            t1.test_empty_state_initial_rendering,
         ]),
         ("Epic 2: Media Ingestion & Ephemeral Lifecycle", [
             t2.test_ffmpeg_binary_availability,

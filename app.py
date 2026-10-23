@@ -23,7 +23,7 @@ st.html(CUSTOM_CSS)
 def init_session_state():
     """Initialize persistent session state for evaluation data and ingested media."""
     if "session_data" not in st.session_state:
-        st.session_state.session_data = get_scenario("interactive")
+        st.session_state.session_data = None
     if "ingested_media" not in st.session_state:
         st.session_state.ingested_media = None
 
