@@ -6,6 +6,7 @@ Option A PII sanitization, and session-state persistence.
 """
 import time
 import streamlit as st
+from src.ui.styles import render_html
 from src.mock.telemetry_generator import EvaluationSession, RetainedSlide, TranscriptSnippet
 from src.ingestion.media_loader import load_media_from_file, load_media_from_url
 from src.ingestion.audio_extractor import extract_audio_pcm_16k
@@ -18,7 +19,7 @@ def render_active_ingested_card(ingested: IngestedMedia):
     """Render the active ingested media card stored in session state."""
     type_badge = "🔗 Cloud Stream" if ingested.source_type == "url" else "📁 Local File"
     
-    st.markdown(f"""
+    render_html(f"""
     <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 0.85rem 1.1rem; margin-bottom: 1.0rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
             <span style="font-weight: 700; font-size: 0.95rem; color: #166534;">{type_badge}: <code>{ingested.source_name}</code></span>
@@ -35,7 +36,7 @@ def render_active_ingested_card(ingested: IngestedMedia):
             <span>🔒 PII Sanitizer: <strong>{ingested.pii_redaction_mode}</strong></span>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     
     if ingested.wav_bytes and not ingested.is_audio_evicted:
         st.caption("🎧 Ephemeral Audio Preview (Pre-Eviction):")
@@ -155,7 +156,7 @@ def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source
 def render_media_and_transcript_viewer(session: EvaluationSession):
     """Render media link/file ingestion, retained slide gallery, and evidence quotes with explanations."""
     
-    st.markdown('<div class="pane-header">📁 Media Input & Evidence Explorer</div>', unsafe_allow_html=True)
+    render_html('<div class="pane-header">📁 Media Input & Evidence Explorer</div>')
     
     active_media: IngestedMedia = st.session_state.get("ingested_media")
     
@@ -243,13 +244,12 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                     </div>
                 </div>
                 """
-                st.markdown(slide_html, unsafe_allow_html=True)
+                render_html(slide_html)
                 
                 # If real extracted base64 image exists, render it; otherwise render placeholder
                 if getattr(slide, "base64_jpeg", None):
-                    st.markdown(
-                        f'<img src="{slide.base64_jpeg}" style="width: 100%; max-height: 260px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 0.25rem; background: #000;" />',
-                        unsafe_allow_html=True
+                    render_html(
+                        f'<img src="{slide.base64_jpeg}" style="width: 100%; max-height: 260px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 0.25rem; background: #000;" />'
                     )
                 else:
                     svg_color = "#3b82f6" if "Presentation" in slide.content_type else "#10b981" if "Whiteboard" in slide.content_type else "#6366f1"
@@ -260,7 +260,7 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                         <span style="font-size: 0.68rem; color: #94a3b8;">Zero Biometric Data &bull; Slide Content Extracted</span>
                     </div>
                     """
-                    st.markdown(canvas_html, unsafe_allow_html=True)
+                    render_html(canvas_html)
 
     # 3. Synchronized Transcript Explorer with Contextual Explanations
     st.markdown("#### 📝 Synchronized Transcript & Evidence Quotes")
@@ -298,4 +298,4 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                 </div>
             </div>
             """
-            st.markdown(transcript_html, unsafe_allow_html=True)
+            render_html(transcript_html)

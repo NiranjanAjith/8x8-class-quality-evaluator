@@ -304,3 +304,14 @@ header[data-testid="stHeader"] {
 }
 </style>
 """
+
+
+def clean_html(raw_html: str) -> str:
+    """Clean HTML string to ensure safe, flawless rendering in st.markdown without code block leakage."""
+    return " ".join(line.strip() for line in raw_html.splitlines() if line.strip())
+
+
+def render_html(raw_html: str):
+    """Render HTML safely via st.markdown without Markdown indentation artifacts."""
+    import streamlit as st
+    st.markdown(clean_html(raw_html), unsafe_allow_html=True)

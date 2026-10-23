@@ -3,6 +3,7 @@ Main Layout & Dual-Pane Orchestrator.
 """
 import streamlit as st
 from src.mock.telemetry_generator import EvaluationSession
+from src.ui.styles import render_html
 from src.ui.components.badge import render_evaluation_badge
 from src.ui.components.kpi_cards import render_kpi_cards
 from src.ui.components.charts import render_probability_chart
@@ -13,7 +14,7 @@ from src.models.evaluator import run_evaluation, apply_evaluation_to_session
 
 def render_header():
     """Render top brand banner and system info."""
-    st.markdown("""
+    render_html("""
     <div class="main-title">
         <span>🎓 8x8 Class Quality Evaluator</span>
         <span style="font-size: 0.8rem; background: #e0e7ff; color: #4338ca; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 700;">
@@ -23,12 +24,12 @@ def render_header():
     <div class="sub-title">
         Air-gapped pedagogical analytics &bull; Content-only visual telemetry &bull; In-memory audio eviction &bull; LLM Judgement & Explanations
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def render_empty_dashboard_placeholder():
     """Render a clean placeholder card before user media input is provided."""
-    st.markdown("""
+    render_html("""
     <div style="background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 14px; padding: 2.75rem 1.75rem; text-align: center; margin-top: 0.5rem;">
         <div style="font-size: 2.75rem; margin-bottom: 0.75rem;">📊</div>
         <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 0.35rem;">
@@ -57,7 +58,7 @@ def render_empty_dashboard_placeholder():
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def render_dashboard_layout(session: EvaluationSession = None):
@@ -70,7 +71,7 @@ def render_dashboard_layout(session: EvaluationSession = None):
         render_media_and_transcript_viewer(session)
         
     with col_right:
-        st.markdown('<div class="pane-header">📊 Pedagogical Assessment & Coaching Dashboard</div>', unsafe_allow_html=True)
+        render_html('<div class="pane-header">📊 Pedagogical Assessment & Coaching Dashboard</div>')
         
         active_media = st.session_state.get("ingested_media")
         

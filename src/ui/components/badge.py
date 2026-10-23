@@ -2,6 +2,7 @@
 Executive Evaluation Badge & Coaching Summary Component.
 """
 import streamlit as st
+from src.ui.styles import render_html
 from src.mock.telemetry_generator import EvaluationSession, QualityTier
 
 
@@ -33,7 +34,7 @@ def render_evaluation_badge(session: EvaluationSession):
         </div>
     </div>
     """
-    st.markdown(badge_html, unsafe_allow_html=True)
+    render_html(badge_html)
     
     # Coaching Recommendations
     with st.expander("💡 Pedagogical Coaching & Action Items", expanded=True):

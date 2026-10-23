@@ -4,6 +4,7 @@ Renders sub-score dimension breakdowns, key strengths, and actionable coaching a
 """
 import streamlit as st
 from typing import List, Optional
+from src.ui.styles import render_html
 from src.models.schema import DimensionScore, PedagogicalEvaluation
 
 
@@ -58,7 +59,7 @@ def render_pedagogical_dimensions(eval_res: Optional[PedagogicalEvaluation]):
         dim_cards_html.append(card)
         
     dim_cards_html.append('</div>')
-    st.markdown("".join(dim_cards_html), unsafe_allow_html=True)
+    render_html("".join(dim_cards_html))
 
     # Observed Strengths Section
     if eval_res.observed_strengths:
@@ -72,7 +73,7 @@ def render_pedagogical_dimensions(eval_res: Optional[PedagogicalEvaluation]):
             </div>
             """)
         strengths_html.append('</div>')
-        st.markdown("".join(strengths_html), unsafe_allow_html=True)
+        render_html("".join(strengths_html))
 
     # Actionable Coaching Plan
     if eval_res.coaching_recommendations:
@@ -86,4 +87,4 @@ def render_pedagogical_dimensions(eval_res: Optional[PedagogicalEvaluation]):
             </div>
             """)
         coaching_html.append('</div>')
-        st.markdown("".join(coaching_html), unsafe_allow_html=True)
+        render_html("".join(coaching_html))

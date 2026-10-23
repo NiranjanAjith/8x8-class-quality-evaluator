@@ -3,6 +3,7 @@ Classroom Telemetry KPI Cards Component.
 """
 import streamlit as st
 from typing import Dict, Any
+from src.ui.styles import render_html
 
 
 def render_kpi_cards(telemetry: Dict[str, Any]):
@@ -114,4 +115,4 @@ def render_kpi_cards(telemetry: Dict[str, Any]):
         </div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
+    render_html(html)
