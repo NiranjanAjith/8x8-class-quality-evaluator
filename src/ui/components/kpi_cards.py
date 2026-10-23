@@ -114,4 +114,4 @@ def render_kpi_cards(telemetry: Dict[str, Any]):
         </div>
     </div>
     """
-    st.html(html)
+    st.markdown(html, unsafe_allow_html=True)

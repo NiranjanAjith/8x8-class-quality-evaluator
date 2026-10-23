@@ -58,7 +58,7 @@ def render_pedagogical_dimensions(eval_res: Optional[PedagogicalEvaluation]):
         dim_cards_html.append(card)
         
     dim_cards_html.append('</div>')
-    st.html("".join(dim_cards_html))
+    st.markdown("".join(dim_cards_html), unsafe_allow_html=True)
 
     # Observed Strengths Section
     if eval_res.observed_strengths:
@@ -72,7 +72,7 @@ def render_pedagogical_dimensions(eval_res: Optional[PedagogicalEvaluation]):
             </div>
             """)
         strengths_html.append('</div>')
-        st.html("".join(strengths_html))
+        st.markdown("".join(strengths_html), unsafe_allow_html=True)
 
     # Actionable Coaching Plan
     if eval_res.coaching_recommendations:
@@ -86,4 +86,4 @@ def render_pedagogical_dimensions(eval_res: Optional[PedagogicalEvaluation]):
             </div>
             """)
         coaching_html.append('</div>')
-        st.html("".join(coaching_html))
+        st.markdown("".join(coaching_html), unsafe_allow_html=True)

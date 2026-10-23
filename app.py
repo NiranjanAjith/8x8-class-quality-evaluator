@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # Inject custom design system CSS
-st.html(CUSTOM_CSS)
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 def init_session_state():

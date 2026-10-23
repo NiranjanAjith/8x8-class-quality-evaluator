@@ -33,7 +33,7 @@ def render_evaluation_badge(session: EvaluationSession):
         </div>
     </div>
     """
-    st.html(badge_html)
+    st.markdown(badge_html, unsafe_allow_html=True)
     
     # Coaching Recommendations
     with st.expander("💡 Pedagogical Coaching & Action Items", expanded=True):

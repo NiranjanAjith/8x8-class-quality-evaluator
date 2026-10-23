@@ -155,7 +155,7 @@ def _process_and_store_ingested_media(raw_bytes: bytes, source_name: str, source
 def render_media_and_transcript_viewer(session: EvaluationSession):
     """Render media link/file ingestion, retained slide gallery, and evidence quotes with explanations."""
     
-    st.html('<div class="pane-header">📁 Media Input & Evidence Explorer</div>')
+    st.markdown('<div class="pane-header">📁 Media Input & Evidence Explorer</div>', unsafe_allow_html=True)
     
     active_media: IngestedMedia = st.session_state.get("ingested_media")
     
@@ -243,7 +243,7 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                     </div>
                 </div>
                 """
-                st.html(slide_html)
+                st.markdown(slide_html, unsafe_allow_html=True)
                 
                 # If real extracted base64 image exists, render it; otherwise render placeholder
                 if getattr(slide, "base64_jpeg", None):
@@ -260,7 +260,7 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                         <span style="font-size: 0.68rem; color: #94a3b8;">Zero Biometric Data &bull; Slide Content Extracted</span>
                     </div>
                     """
-                    st.html(canvas_html)
+                    st.markdown(canvas_html, unsafe_allow_html=True)
 
     # 3. Synchronized Transcript Explorer with Contextual Explanations
     st.markdown("#### 📝 Synchronized Transcript & Evidence Quotes")
@@ -298,4 +298,4 @@ def render_media_and_transcript_viewer(session: EvaluationSession):
                 </div>
             </div>
             """
-            st.html(transcript_html)
+            st.markdown(transcript_html, unsafe_allow_html=True)
